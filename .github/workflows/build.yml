@@ -1,0 +1,96 @@
+# .github/workflows/build-native-image.yml
+
+name: Build Native Images from Release JAR
+
+# 触发条件：当一个新的 Release 被 'published' 时触发。
+# 'created' 或 'edited' 不会触发，只有在你点击 "Publish release" 按钮后才会运行。
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-native:
+    # 定义构建矩阵，针对不同的操作系统并行构建
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    # 指定运行器（Runner）的操作系统
+    runs-on: ${{ matrix.os }}
+
+    # 定义作业的步骤
+    steps:
+      # 步骤 1: 检出代码
+      # 虽然我们不从源码构建，但某些 action 可能需要仓库的上下文。
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 步骤 2: 设置 GraalVM 环境
+      # 使用 graalvm/setup-graalvm action 来安装指定版本的 GraalVM。
+      # '21' 代表 Java 21, 你可以根据你的 JAR 包需求修改。
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: 'graalvm'
+          # 安装 native-image 组件
+          components: 'native-image'
+      
+      # 步骤 3: 从 Release 下载 JAR 文件
+      # 我们使用 GitHub CLI (gh)，它在所有 GitHub-hosted runner 上都预装了。
+      # 它会自动从触发本次工作流的 Release 中查找并下载 .jar 文件。
+      # --pattern '*.jar' 确保只下载 JAR 文件。
+      - name: Download JAR from Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ${{ github.event.release.tag_name }} --pattern '*.jar'
+          echo "JAR_FILE=$(find . -maxdepth 1 -name '*.jar' | head -n 1)" >> $GITHUB_ENV
+      
+      # 步骤 4: 构建 Native Image
+      # 使用下载的 JAR 文件来构建原生可执行文件。
+      - name: Build Native Image
+        run: |
+          echo "Building native image from ${{ env.JAR_FILE }}..."
+          native-image -jar ${{ env.JAR_FILE }}
+          echo "Build completed."
+
+      # 步骤 5: 确定输出文件名
+      # 根据操作系统为可执行文件和最终的资产命名。
+      - name: Determine Output Filename
+        id: properties
+        shell: bash
+        run: |
+          JAR_BASENAME=$(basename "${{ env.JAR_FILE }}" .jar)
+          OS_NAME=""
+          EXECUTABLE_NAME=""
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            OS_NAME="linux"
+            EXECUTABLE_NAME="$JAR_BASENAME"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            OS_NAME="macos"
+            EXECUTABLE_NAME="$JAR_BASENAME"
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
+            OS_NAME="windows"
+            EXECUTABLE_NAME="$JAR_BASENAME.exe"
+          fi
+          echo "asset_name=${JAR_BASENAME}-${OS_NAME}" >> $GITHUB_OUTPUT
+          echo "executable_path=${EXECUTABLE_NAME}" >> $GITHUB_OUTPUT
+          echo "Final asset name: ${JAR_BASENAME}-${OS_NAME}"
+          echo "Executable path: ${EXECUTABLE_NAME}"
+          
+      # 步骤 6: 上传构建好的原生可执行文件到 Release
+      # 使用 actions/upload-release-asset action 将文件上传回触发工作流的 Release。
+      - name: Upload Native Executable to Release
+        uses: actions/upload-release-asset@v1
+        with:
+          # 从触发事件的上下文中获取上传 URL
+          upload_url: ${{ github.event.release.upload_url }}
+          # 要上传的文件的路径
+          asset_path: ./${{ steps.properties.outputs.executable_path }}
+          # 在 Release 中显示的文件名
+          asset_name: ${{ steps.properties.outputs.asset_name }}
+          # 文件的 MIME 类型
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
