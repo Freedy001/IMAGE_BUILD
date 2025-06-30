@@ -80,9 +80,9 @@ jobs:
           $assetName = "$jarBasename-windows"
           $executableName = "$jarBasename.exe"
 
-          # 使用 PowerShell 的方式将输出变量写入 $env:GITHUB_OUTPUT 文件
-          echo "asset_name=$assetName" | Add-Content -Path $env:GITHUB_OUTPUT
-          echo "executable_path=$executableName" | Add-Content -Path $env:GITHUB_OUTPUT
+          # 使用 PowerShell 的方式将输出变量写入 $env:GITHUB_ENV 文件
+          echo "asset_name=$assetName" | Add-Content -Path $env:GITHUB_ENV
+          echo "executable_path=$executableName" | Add-Content -Path $env:GITHUB_ENV
 
           # 在日志中打印最终结果以供验证
           Write-Host "Final asset name: $assetName"
@@ -97,8 +97,8 @@ jobs:
           OS_NAME="${{ runner.os }}"
           EXECUTABLE_NAME="$JAR_BASENAME"
 
-          echo "asset_name=${JAR_BASENAME}-${OS_NAME}" >> $GITHUB_OUTPUT
-          echo "executable_path=${EXECUTABLE_NAME}" >> $GITHUB_OUTPUT
+          echo "asset_name=${JAR_BASENAME}-${OS_NAME}" >> $GITHUB_ENV
+          echo "executable_path=${EXECUTABLE_NAME}" >> $GITHUB_ENV
 
           echo "Final asset name: ${JAR_BASENAME}-${OS_NAME}"
           echo "Executable path: ${EXECUTABLE_NAME}"
@@ -111,9 +111,9 @@ jobs:
           # 从触发事件的上下文中获取上传 URL
           upload_url: ${{ github.event.release.upload_url }}
           # 要上传的文件的路径
-          asset_path: ./${{ steps.properties.outputs.executable_path }}
+          asset_path: ./${{ env.executable_path }}
           # 在 Release 中显示的文件名
-          asset_name: ${{ steps.properties.outputs.asset_name }}
+          asset_name: ${{ env.asset_name }}
           # 文件的 MIME 类型
           asset_content_type: application/octet-stream
         env:
