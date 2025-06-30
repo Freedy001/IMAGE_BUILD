@@ -40,8 +40,19 @@ jobs:
       # 我们使用 GitHub CLI (gh)，它在所有 GitHub-hosted runner 上都预装了。
       # 它会自动从触发本次工作流的 Release 中查找并下载 .jar 文件。
       # --pattern '*.jar' 确保只下载 JAR 文件。
-      - name: Download JAR from Release
-        shell: bash
+      - name: Download JAR from Release (win)
+        if: matrix.os == 'windows-latest' 
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ${{ github.event.release.tag_name }}
+          $jarFile = (Get-ChildItem -Path . -Depth 0 -Filter '*.jar' | Select-Object -First 1).FullName
+          echo "JAR_FILE=$jarFile" | Add-Content -Path $env:GITHUB_ENV
+          $argFile = (Get-ChildItem -Path . -Depth 0 -Filter 'native-image.args' | Select-Object -First 1).FullName
+          echo "ARG_FILE=$argFile" | Add-Content -Path $env:GITHUB_ENV
+      
+      - name: Download JAR from Release (linux/macos)
+        if: matrix.os != 'windows-latest' 
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -57,27 +68,40 @@ jobs:
           native-image @${{ env.ARG_FILE }} -jar ${{ env.JAR_FILE }}
           echo "Build completed."
 
+
       # 步骤 5: 确定输出文件名
       # 根据操作系统为可执行文件和最终的资产命名。
-      - name: Determine Output Filename
+      - name: Determine Output Filename (win)
+        if: matrix.os == 'windows-latest' 
         id: properties
-        shell: bash
+        run: |
+          # 从 JAR 文件完整路径中提取不带扩展名的基本名称 (e.g., "myapp-1.0")
+          $jarBasename = [System.IO.Path]::GetFileNameWithoutExtension($env:JAR_FILE)
+
+          $assetName = "$jarBasename-windows"
+          $executableName = "$jarBasename.exe"
+
+          # 使用 PowerShell 的方式将输出变量写入 $env:GITHUB_OUTPUT 文件
+          echo "asset_name=$assetName" | Add-Content -Path $env:GITHUB_OUTPUT
+          echo "executable_path=$executableName" | Add-Content -Path $env:GITHUB_OUTPUT
+
+          # 在日志中打印最终结果以供验证
+          Write-Host "Final asset name: $assetName"
+          Write-Host "Executable path: $executableName"
+      
+      # 步骤 5: 确定输出文件名
+      # 根据操作系统为可执行文件和最终的资产命名。
+      - name: Determine Output Filename (linux/macos)
+        if: matrix.os != 'windows-latest' 
+        id: properties
         run: |
           JAR_BASENAME=$(basename "${{ env.JAR_FILE }}" .jar)
-          OS_NAME=""
-          EXECUTABLE_NAME=""
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            OS_NAME="linux"
-            EXECUTABLE_NAME="$JAR_BASENAME"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            OS_NAME="macos"
-            EXECUTABLE_NAME="$JAR_BASENAME"
-          elif [[ "${{ runner.os }}" == "Windows" ]]; then
-            OS_NAME="windows"
-            EXECUTABLE_NAME="$JAR_BASENAME.exe"
-          fi
+          OS_NAME="${{ runner.os }}"
+          EXECUTABLE_NAME="$JAR_BASENAME"
+          
           echo "asset_name=${JAR_BASENAME}-${OS_NAME}" >> $GITHUB_OUTPUT
           echo "executable_path=${EXECUTABLE_NAME}" >> $GITHUB_OUTPUT
+
           echo "Final asset name: ${JAR_BASENAME}-${OS_NAME}"
           echo "Executable path: ${EXECUTABLE_NAME}"
           
