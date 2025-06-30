@@ -31,7 +31,7 @@ jobs:
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '21'
+          java-version: '24'
           distribution: 'graalvm'
           # 安装 native-image 组件
           components: 'native-image'
@@ -44,15 +44,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download ${{ github.event.release.tag_name }} --pattern '*.jar'
+          gh release download ${{ github.event.release.tag_name }}
           echo "JAR_FILE=$(find . -maxdepth 1 -name '*.jar' | head -n 1)" >> $GITHUB_ENV
+          echo "ARG_FILE=$(find . -maxdepth 1 -name 'native-image.args' | head -n 1)" >> $GITHUB_ENV
       
       # 步骤 4: 构建 Native Image
       # 使用下载的 JAR 文件来构建原生可执行文件。
       - name: Build Native Image
         run: |
           echo "Building native image from ${{ env.JAR_FILE }}..."
-          native-image -jar ${{ env.JAR_FILE }}
+          native-image @${{ env.ARG_FILE }} -jar ${{ env.JAR_FILE }}
           echo "Build completed."
 
       # 步骤 5: 确定输出文件名
