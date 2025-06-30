@@ -73,7 +73,6 @@ jobs:
       # 根据操作系统为可执行文件和最终的资产命名。
       - name: Determine Output Filename (win)
         if: matrix.os == 'windows-latest' 
-        id: properties
         run: |
           # 从 JAR 文件完整路径中提取不带扩展名的基本名称 (e.g., "myapp-1.0")
           $jarBasename = [System.IO.Path]::GetFileNameWithoutExtension($env:JAR_FILE)
@@ -93,12 +92,11 @@ jobs:
       # 根据操作系统为可执行文件和最终的资产命名。
       - name: Determine Output Filename (linux/macos)
         if: matrix.os != 'windows-latest' 
-        id: properties
         run: |
           JAR_BASENAME=$(basename "${{ env.JAR_FILE }}" .jar)
           OS_NAME="${{ runner.os }}"
           EXECUTABLE_NAME="$JAR_BASENAME"
-          
+
           echo "asset_name=${JAR_BASENAME}-${OS_NAME}" >> $GITHUB_OUTPUT
           echo "executable_path=${EXECUTABLE_NAME}" >> $GITHUB_OUTPUT
 
