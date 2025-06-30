@@ -41,6 +41,7 @@ jobs:
       # 它会自动从触发本次工作流的 Release 中查找并下载 .jar 文件。
       # --pattern '*.jar' 确保只下载 JAR 文件。
       - name: Download JAR from Release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
