@@ -105,16 +105,10 @@ jobs:
           
       # 步骤 6: 上传构建好的原生可执行文件到 Release
       # 使用 actions/upload-release-asset action 将文件上传回触发工作流的 Release。
-      - name: Upload Native Executable to Release
-        uses: actions/upload-release-asset@v1
+      - name: Upload Native Executable to Artifact
+        uses: actions/upload-artifact@v4
         with:
-          # 从触发事件的上下文中获取上传 URL
-          upload_url: ${{ github.event.release.upload_url }}
-          # 要上传的文件的路径
-          asset_path: ./${{ env.executable_path }}
-          # 在 Release 中显示的文件名
-          asset_name: ${{ env.asset_name }}
-          # 文件的 MIME 类型
-          asset_content_type: application/octet-stream
+          name: ${{ env.asset_name }}
+          path: ./${{ env.executable_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
