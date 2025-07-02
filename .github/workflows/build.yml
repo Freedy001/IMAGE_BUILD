@@ -81,7 +81,9 @@ jobs:
               echo '--- Inside Container: Installing dependencies ---'; \
               sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
               sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
-              yum install -y zlib-devel && \
+              yum install -y centos-release-scl && \
+              yum install -y devtoolset-9-gcc-c++ zlib-devel && \
+              source /opt/rh/devtoolset-9/enable && \
               echo '--- Inside Container: Starting native-image build ---'; \
               cd /workspace && \
               /graalvm/bin/native-image \
