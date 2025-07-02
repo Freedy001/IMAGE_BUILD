@@ -73,14 +73,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest' 
         run: |
           echo "--- Starting Docker container for build ---"
-          sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
-          sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -v ${{ env.JAVA_HOME }}:/graalvm \
             centos:7 \
             /bin/bash -c " \
               echo '--- Inside Container: Installing dependencies ---'; \
+              sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+              sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
               yum install -y zlib-devel && \
               echo '--- Inside Container: Starting native-image build ---'; \
               cd /workspace && \
