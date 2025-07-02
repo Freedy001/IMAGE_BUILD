@@ -63,10 +63,31 @@ jobs:
       # 步骤 4: 构建 Native Image
       # 使用下载的 JAR 文件来构建原生可执行文件。
       - name: Build Native Image
+        if: matrix.os != 'ubuntu-latest' 
         run: |
           echo "Building native image from ${{ env.JAR_FILE }}..."
           native-image @${{ env.ARG_FILE }} -jar ${{ env.JAR_FILE }}
           echo "Build completed."
+
+      - name: Build Native Image With Docker
+        if: matrix.os == 'ubuntu-latest' 
+        run: |
+          echo "--- Starting Docker container for build ---"
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -v ${{ env.JAVA_HOME }}:/graalvm \
+            centos:7 \
+            /bin/bash -c " \
+              echo '--- Inside Container: Installing dependencies ---'; \
+              yum install -y zlib-devel && \
+              echo '--- Inside Container: Starting native-image build ---'; \
+              cd /workspace && \
+              /graalvm/bin/native-image \
+                @${{ env.ARG_FILE }} \
+                -jar ${{ env.JAR_FILE }} && \
+              echo '--- Inside Container: Correcting file permissions ---'; \
+              chown -R $(id -u):$(id -g) . \
+            "
 
 
       # 步骤 5: 确定输出文件名
