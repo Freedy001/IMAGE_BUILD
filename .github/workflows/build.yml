@@ -73,6 +73,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest' 
         run: |
           echo "--- Starting Docker container for build ---"
+          sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+          sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -v ${{ env.JAVA_HOME }}:/graalvm \
